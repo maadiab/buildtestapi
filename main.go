@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -27,6 +28,30 @@ type Author struct {
 
 // Fake DB
 var courses []Course
+
+func main() {
+
+	r := mux.NewRouter()
+
+	// seeding
+
+	courses = append(courses, Course{CourseId: "2", CourseName: "go development",
+		CoursePrice: 300, Author: &Author{Fullname: "mohanad diab", Website: "maadiab.io"}})
+
+	courses = append(courses, Course{CourseId: "3", CourseName: "reactjs",
+		CoursePrice: 250, Author: &Author{Fullname: "mohanad ahmed", Website: "mohanad-diab.com"}})
+
+	// Routing
+	r.HandleFunc("/", ServeHome).Methods("GET")
+	r.HandleFunc("/courses", GetAllData).Methods("GET")
+	r.HandleFunc("/course/{id}", GetDatabyId).Methods("GET")
+	r.HandleFunc("/course", CreateData).Methods("POST")
+	r.HandleFunc("/course/{id}", updateDataById).Methods("PUT")
+	r.HandleFunc("/course/{id}", deleteSomeData).Methods("DELETE")
+
+	// Listen to the port
+	log.Fatal(http.ListenAndServe(":8090", r))
+}
 
 // Middleware, helper - file
 func (c *Course) IsEmpty() bool {
@@ -108,20 +133,39 @@ func updateDataById(w http.ResponseWriter, r *http.Request) {
 
 	// retreive id from user
 
-	// params := mux.Vars(r)
+	params := mux.Vars(r)
 
 	//loop, id, remove, add value again in this fake DB
 
+	for index, course := range courses {
+
+		if course.CourseId == params["id"] {
+			courses = append(courses[:index], courses[index+1:]...)
+			var course Course
+
+			_ = json.NewDecoder(r.Body).Decode(&course)
+			course.CourseId = params["id"]
+			courses = append(courses, course)
+			json.NewEncoder(w).Encode(course)
+			return
+		}
+	}
+
 }
 
-// Handlers - file
+func deleteSomeData(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("delete some data")
 
-func main() {
+	w.Header().Set("Content-Type", "aplication/json")
 
-	http.HandleFunc("/", ServeHome)
-	http.HandleFunc("/getall", GetAllData)
-	http.HandleFunc("/getid", GetDatabyId)
+	params := mux.Vars(r)
 
-	http.ListenAndServe(":8090", nil)
+	for index, course := range courses {
+
+		if course.CourseId == params["id"] {
+			courses = append(courses[:index], courses[index+1:]...)
+			break
+		}
+	}
 
 }
